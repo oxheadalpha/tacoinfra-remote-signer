@@ -2,8 +2,9 @@ FROM python:3.9-slim
 
 COPY requirements.txt /
 
-RUN     apt-get update							\
-     && apt-get install -y jq awscli git gcc g++ make python3-dev curl	\
+RUN	apt-get update							\
+     && apt-get install -y git gcc g++ make python3-dev swig		\
+     && apt-get install -y jq awscli curl				\
      && apt-get install -y libsodium23   libsecp256k1-0   libgmp10	\
      && apt-get install -y libsodium-dev libsecp256k1-dev libgmp-dev	\
      && pip --no-cache install -r /requirements.txt			\
@@ -14,7 +15,7 @@ RUN     apt-get update							\
      && cp libhsm.so /usr/lib/x86_64-linux-gnu/libhsm.so		\
      && cd /								\
      && rm -rf /tmp/libhsm						\
-     && apt-get purge -y git gcc g++ make python3-dev			\
+     && apt-get purge -y git gcc g++ make python3-dev swig		\
      && apt-get purge -y libsodium-dev libsecp256k1-dev libgmp-dev	\
      && apt-get autoremove -y						\
      && rm -rf /var/lib/apt /var/cache/apt /root/.cache
