@@ -16,6 +16,8 @@
 from werkzeug.exceptions import abort
 
 class ChainRatchet:
+    def __init__(self) -> None:
+      self.lastlevel = self.lastround = 0
     def check(self, sig_type, level=0, round=0):
         if self.lastlevel < level:
             return True
