@@ -1,13 +1,16 @@
-FROM python:3.9-slim
+FROM python:3.9-slim@sha256:3e45d072301981add6ab1d376394edc4eb0ec2afb70e7ffcbb3113eb432ab709
 
-COPY requirements.txt /
+RUN mkdir -p /app
+WORKDIR /app
+
+COPY requirements.txt .
 
 RUN	apt-get update							\
      && apt-get install -y git gcc g++ make python3-dev swig		\
      && apt-get install -y jq awscli curl				\
      && apt-get install -y libsodium23   libsecp256k1-0   libgmp10	\
      && apt-get install -y libsodium-dev libsecp256k1-dev libgmp-dev	\
-     && pip --no-cache install -r /requirements.txt			\
+     && pip --no-cache install -r ./requirements.txt			\
      && cd /tmp								\
      && git clone https://github.com/tacoinfra/libhsm			\
      && cd libhsm/build							\
@@ -18,8 +21,8 @@ RUN	apt-get update							\
      && apt-get purge -y git gcc g++ make python3-dev swig		\
      && apt-get purge -y libsodium-dev libsecp256k1-dev libgmp-dev	\
      && apt-get autoremove -y						\
-     && rm -rf /var/lib/apt /var/cache/apt /root/.cache
-
+     && rm -rf /var/lib/apt /var/cache/apt /root/.cache \
+     && rm -rf __pycache__
 #
 # We do not install the dependencies for the following packages because
 # we use only a subset of their functionality and the dependencies are
@@ -40,7 +43,25 @@ RUN	TOP=https://s3.amazonaws.com/cloudhsmv2-software/CloudHsmClient	\
 	dpkg -i --force-depends "$PKCS11";				\
 	rm -f "$PKCS11"
 
-COPY src/. /src/
-COPY signer.py /
+ARG FLASK_ENV=production
+ENV FLASK_ENV=$FLASK_ENV
 
-ENTRYPOINT ["/src/start-remote-signer.sh"]
+RUN groupadd -r -g 999 remotesigner && \
+  useradd -r -u 999 -g remotesigner remotesigner
+
+COPY src ./src
+COPY entrypoint.sh ./
+COPY hsm-remote-signer.sh ./
+COPY signer.py ./
+
+# Makr /src code immutable
+RUN rm -rf /usr/local/bin/pip \
+    && rm requirements.txt \
+    && chown -R remotesigner:remotesigner . \
+    && chmod 540 entrypoint.sh hsm-remote-signer.sh signer.py \
+    && chmod 740 src \
+    && chmod 740 .
+
+USER 999
+
+ENTRYPOINT ["./entrypoint.sh"]

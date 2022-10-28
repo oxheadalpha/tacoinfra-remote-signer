@@ -72,7 +72,8 @@ aws_set_hsm_address() {
 
 start_remote_signer() {
 	echo "Starting remote signer..."
-	FLASK_APP=signer /usr/local/bin/flask run --host=0.0.0.0
+	# FLASK_APP=signer /usr/local/bin/flask run --host=0.0.0.0
+  python3 signer.py hsm
 }
 
 MISSING=

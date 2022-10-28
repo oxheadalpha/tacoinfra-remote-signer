@@ -1,0 +1,5 @@
+venv
+LICENSE.md
+Makefile
+tezos-kms
+./src/__pycache__

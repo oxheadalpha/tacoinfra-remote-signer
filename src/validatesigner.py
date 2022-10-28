@@ -17,17 +17,18 @@ class ValidateSigner:
         self.subsigner = subsigner
         self.node_addr = config['node_addr']
 
-    def sign(self, handle, sigreq):
+    def sign(self, sigreq, key, key_hash):
         if sigreq.get_type() not in baking_req_types:
             raise(Exception("Unsupported signature request tag"))
 
+        private_handle = key['private_handle']
         sig_type = f"{sigreq.get_type()}_{sigreq.get_chainid()}"
         logging.debug(f"About to sign {sigreq.get_payload()} " +
-                      f"with key handle {handle}")
+                      f"with key handle {private_handle}")
 
         level = sigreq.get_level()
         round = sigreq.get_round()
 
         self.ratchet.check(sig_type, level, round)
 
-        return self.subsigner.sign(handle, sigreq)
+        return self.subsigner.sign(sigreq, private_handle)

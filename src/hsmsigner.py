@@ -21,7 +21,7 @@ class HsmSigner(Signer):
         self.hsm_pin = f'{hsm_user}:{hsm_password}'
         self.hsm_libfile = config['hsm_lib']
 
-    def sign(self, handle, sigreq):
+    def sign(self, sigreq, handle):
         logging.debug(f'Signing with HSM client:')
         logging.debug(f'    Slot = {self.hsm_slot}')
         logging.debug(f'    lib = {self.hsm_libfile}')

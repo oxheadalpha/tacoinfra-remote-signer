@@ -44,7 +44,7 @@ class DDBChainRatchet(ChainRatchet):
             logging.error("DynamoDB error during CreateItem: " +
                           err.response['Error']['Message'])
             abort(500, "DB error")
-        else: 
+        else:
             logging.debug("PutItem succeeded: " +
                           json.dumps(put_response, indent=4))
             return True
