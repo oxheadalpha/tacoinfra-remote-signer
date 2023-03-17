@@ -54,12 +54,12 @@ COPY entrypoint.sh ./
 COPY hsm-remote-signer.sh ./
 COPY signer.py ./
 
-# Makr /src code immutable
+# Make files un-writeable
 RUN rm -rf /usr/local/bin/pip \
     && rm requirements.txt \
     && chown -R remotesigner:remotesigner . \
     && chmod 540 entrypoint.sh hsm-remote-signer.sh signer.py \
-    && chmod 740 src \
+    && chmod 440 src \
     && chmod 740 .
 
 USER 999
