@@ -82,7 +82,9 @@ def sign(key_hash):
             key_data = config["keys"][key_hash]
             if request.method == "POST":
                 sigreq = SignatureReq(request.get_json(force=True))
-                response = jsonify({"signature": SIGNER.sign(sigreq, key_data, key_hash=key_hash)})
+                response = jsonify(
+                    {"signature": SIGNER.sign(sigreq, key_data, key_hash=key_hash)}
+                )
             else:
                 response = jsonify({"public_key": key_data["public_key"]})
         else:
@@ -106,14 +108,12 @@ def sign(key_hash):
     return response
 
 
-@app.route('/authorized_keys', methods=['GET'])
+@app.route("/authorized_keys", methods=["GET"])
 def authorized_keys():
     return app.response_class(
-        response=json.dumps({}),
-        status=200,
-        mimetype='application/json'
+        response=json.dumps({}), status=200, mimetype="application/json"
     )
 
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)

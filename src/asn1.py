@@ -8,7 +8,7 @@
 # file "AUTHORS" for a complete overview.
 
 """
-This module provides ASN.1 encoder and decoder.
+This module provides ASN.1 decoder.
 Base on https://github.com/andrivet/python-asn1/blob/master/src/asn1.py
 """
 
@@ -19,6 +19,8 @@ from numbers import Number
 Tag = collections.namedtuple("Tag", "nr typ cls")
 """A named tuple to represent ASN.1 tags as returned by `Decoder.peek()` and
 `Decoder.read()`."""
+
+HIGH_S_VALUE = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
 
 class Error(Exception):
