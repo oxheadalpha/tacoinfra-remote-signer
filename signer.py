@@ -7,8 +7,9 @@ from flask import Flask, Response, json, jsonify, request
 from werkzeug.exceptions import HTTPException
 
 from src.ddbchainratchet import DDBChainRatchet
+from src.file_ratchet import FileRatchet
 from src.hsmsigner import HsmSigner
-from src.kms_signer import KmsSigner, FileRatchet
+from src.kms_signer import KmsSigner
 from src.sigreq import SignatureReq
 from src.validatesigner import ValidateSigner
 
@@ -51,15 +52,14 @@ try:
 except:
     signer_type = None
 
-# EKS HAS $AWS_REGION
-REGION = environ["REGION"]
 SIGNER = None
+REGION = environ.get("REGION") or environ.get("AWS_REGION")
+if not REGION:
+    raise Exception("No REGION or AWS_REGION env var set.")
 
 if signer_type == "kms":
     client = boto3.client("kms", region_name=REGION)
-    # file_ratchet = FileRatchet()
     SIGNER = KmsSigner(client, ratchet=FileRatchet)
-    # SIGNER = KmsSigner(client, ratchet=file_ratchet)
 elif signer_type == "hsm":
     ratchet = DDBChainRatchet(REGION, environ["DDB_TABLE"])
     hsm_signer = HsmSigner(config)
