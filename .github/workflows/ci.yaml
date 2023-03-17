@@ -9,7 +9,9 @@ on:
     # trigger once for the release.
     tags-ignore:
       - "*.*.*"
+
   pull_request:
+
   release:
     types: [created]
 
@@ -42,5 +44,5 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          file: /Dockerfile
-          context: /.
+          file: Dockerfile
+          context: .
