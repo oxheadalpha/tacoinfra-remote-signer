@@ -5,8 +5,6 @@ import unittest
 
 from pytezos.crypto.encoding import base58_encode
 
-import sys
-
 from src.chainratchet import MockChainRatchet
 from src.signer import Signer
 from src.sigreq import SignatureReq
@@ -213,7 +211,6 @@ class TestRemoteSigner(unittest.TestCase):
             got = SignatureReq(req[-1])
             self.assertEqual(req[0], got.type)
 
-            print({"level": got.level, "round": got.round})
             if got.type == "Ballot":
                 return self.vote_test(req, got)
 
