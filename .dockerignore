@@ -1,5 +1,10 @@
-venv
+./src/__pycache__
+.git
+.gitignore
+.idea
+LICENSE.md
 LICENSE.md
 Makefile
+test
 tezos-kms
-./src/__pycache__
+venv

@@ -17,20 +17,27 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
-# sample config used for testing
-config = {
-    "hsm_username": "resigner",
-    "hsm_slot": 1,
-    "hsm_lib": "/opt/cloudhsm/lib/libcloudhsm_pkcs11.so",
-    "node_addr": "http://node.internal:8732",
-    "keys": {
-        "tz3aTaJ3d7Rh4yXpereo4yBm21xrs4bnzQvW": {
-            "public_key": "p2pk67jx4rEadFpbHdiPhsKxZ4KCoczLWqsEpNarWZ7WQ1SqKMf7JsS",
-            "private_handle": 7,
-            "public_handle": 9,
-        }
-    },
-}
+#
+# The config file (keys.json) has a structure:
+#
+# config = {
+#     'hsm_username': 'resigner',
+#     'hsm_slot': 1,
+#     'hsm_lib': '/opt/cloudhsm/lib/libcloudhsm_pkcs11.so',
+#     'keys': {
+#         'tz3aTaJ3d7Rh4yXpereo4yBm21xrs4bnzQvW': {
+#             'public_key':
+#                 'p2pk67jx4rEadFpbHdiPhsKxZ4KCoczLWqsEpNarWZ7WQ1SqKMf7JsS',
+#             'private_handle': 7,
+#             'public_handle': 9
+#         }
+#     },
+#     'policy': {
+#         'baking': 1,		# just a boolean
+#         'voting': ['pass'],	# a list of permitted votes
+#     }
+# }
+config = {}
 
 keys_path = "./signer-config/keys.json"
 if path.isfile(keys_path):

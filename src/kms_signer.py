@@ -17,7 +17,7 @@ from src.asn1 import Decoder
 from src.constants import baking_req_types
 from src.signer import Signer
 
-baking_req_types = ["Registering", "Baking", "Endorsement", "Preendorsement"]
+valid_req_types = ["Baking", "Endorsement", "Preendorsement", "Ballot"]
 
 
 class FileRatchet:
@@ -29,7 +29,6 @@ class FileRatchet:
             )
 
         self.ratchet_state = {}
-        # self._lock = threading.Lock()
         self._lock = lock
 
     def get_ratchet_file_path(self, key_hash):
@@ -110,12 +109,6 @@ class FileRatchet:
         json.dump(ratchet_data, ratchet_file)
         self.ratchet_state = ratchet_data
 
-    def delete_op(self, last_level_round, op_type, key_hash):
-        with self._lock:
-          ratchet_file_path = self.get_ratchet_file_path(key_hash)
-          with open(self.get_ratchet_file_path(key_hash), "w") as file:
-            (ratchet_data, op_ratchet) = self.get_op_ratchet(file, op_type)
-
 
 # TODO we may need to utilize more locking for signing and not just use locks in
 # the FileRatchet. If we assume only one baker per  signer, perhaps we don't
@@ -138,35 +131,20 @@ class KmsSigner:
             self.lock = threading.RLock()
             self.ratchet = ratchet(lock=self.lock)
 
-
     def sign(self, sigreq, key, key_hash):
         """Entrypoint function for the KmsSigner to sign an operation"""
         op_type = sigreq.get_type()
-        if op_type not in baking_req_types:
+        if op_type not in valid_req_types:
             raise Exception(f"Unsupported signature request type: {op_type}")
 
-        # with self.lock:
-
-        last_level_round = None
-        if self.ratchet:
-            # last_level_round = self._get_last_level_round(op_type)
+        if self.ratchet and op_type != "Ballot":
             self._validate_op(sigreq, key_hash)
 
-        # try:
-            kms_der_sig = self._kms_sign(sigreq, key)
-            decoded_sig = self._decode_sig(kms_der_sig)
-            b58_sig = base58_encode(decoded_sig, b"spsig")
-            logging.debug(f"Base58-encoded signature: {b58_sig}")
-            return b58_sig.decode("utf-8")
-        # except:
-            # block_level = sigreq.get_level()
-            # block_round = sigreq.get_round()
-            # logging.error(
-            #     f"Failed to sign {op_type} level/round: {block_level}/{block_round}."
-            # )
-            # if self.ratchet:
-            #     self.ratchet.delete_op(last_level_round, op_type key_hash)
-            # raise
+        kms_der_sig = self._kms_sign(sigreq, key)
+        decoded_sig = self._decode_sig(kms_der_sig)
+        b58_sig = base58_encode(decoded_sig, b"spsig")
+        logging.debug(f"Base58-encoded signature: {b58_sig}")
+        return b58_sig.decode("utf-8")
 
     def _validate_op(self, sigreq, key_hash):
         """Use a ratchet to validate an operation"""
@@ -242,85 +220,3 @@ class KmsSigner:
         logging.debug("Signature:", sig)
         return sig
 
-
-# x = FileRatchet("./")
-# sigreq = {"level": 0, "round": 0, "type": "Baking"}
-# x.check("ratchet_file", sigreq)
-# print("RATCHET:", x._ratchet, "\n")
-# sigreq = {"level": 0, "round": 0, "type": "Baking"}
-# x.check("ratchet_file", sigreq)
-# print("RATCHET:", x._ratchet, "\n")
-# sigreq = {"level": 1, "round": 1, "type": "Baking"}
-# x.check("ratchet_file", sigreq)
-# print("RATCHET:", x._ratchet, "\n")
-# sigreq = {"level": 1, "round": 1, "type": "Endor"}
-# x.check("ratchet_file", sigreq)
-# print("RATCHET:", x._ratchet, "\n")
-# sigreq = {"level": 2, "round": 2, "type": "Endor"}
-# x.check("ratchet_file", sigreq)
-# print("RATCHET:", x._ratchet, "\n")
-# sigreq = {"level": 1, "round": 1, "type": "Endorsement"}
-# x.check("ratchet_file", sigreq)
-# print(x._ratchet)
-# sigreq = {"level":1, "round":1, "type": "Baking"}
-# x.check("ratchet_file", sigreq)
-# print(x._ratchet)
-
-
-# y = KmsSigner(ratchet=x)
-# y.validate_op({"level": 0, "round": 0, "type": "Baking"}, "ratchet_file")
-# y.validate_op({"level": 1, "round": 1, "type": "Baking"}, "ratchet_file")
-# y.validate_op({"level": 1, "round": 2, "type": "Baking"}, "ratchet_file")
-# y.validate_op({"level": 1, "round": 1, "type": "Endorsement"}, "ratchet_file")
-# y.validate_op({"level": 1, "round": 2, "type": "Endorsement"}, "ratchet_file")
-# y.validate_op({"level": 1, "round": 2, "type": "Preendorsement"}, "ratchet_file")
-# y.validate_op({"level": 2, "round": 2, "type": "Baking"}, "ratchet_file")
-# y.validate_op({"level": 3, "round": 0, "type": "Baking"}, "ratchet_file")
-# y.validate_op({"level": 0, "round": 0, "type": "Endorsement"}, "ratchet_file")
-
-
-# l = threading.Lock()
-# def test(sigreq, file):
-#     block_level = sigreq["level"]
-#     block_round = sigreq["round"]
-#     op_type = sigreq["type"]
-#     # if True:
-#     with l:
-#         is_valid_op =  x.check(sigreq, file)
-#         # print(randint(1, 3))
-
-#         # with l:
-#         # print("LEVEL ROUND:", block_level, block_round)
-#         # print("IS VALID?", is_valid_op)
-#         sleep(random())
-#         print(
-#             f"LOOK AT THIS: {is_valid_op, x.ratchet_state.get(op_type), block_level, block_round}\n"
-#         )
-
-
-# lock = threading.Lock()
-# a = [
-#     threading.Thread(
-#         target=test,
-#         # target=x.check,
-#         args=(
-#             {"level": i, "round": i, "type": "Baking"},
-#             "ratchet_file",
-#         ),
-#     )
-#     for i in range(10)
-# ]
-# # z = [
-# #     threading.Thread(
-# #         target=x.check,
-# #         args=("ratchet_file", {"level": i, "round": i, "type": "Baking"}),
-# #     )
-# #     for i in range(10)
-# # ]
-# # threads = [*z, *a]
-# threads = [*a]
-# for thread in threads:
-#     # print(thread.getName())
-#     thread.start()
-# for thread in threads:
-#     thread.join()
