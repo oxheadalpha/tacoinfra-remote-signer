@@ -37,10 +37,12 @@ class FileRatchet:
             # Open or create ratchet file for `key_hash`
             with open(ratchet_file_path, "a+") as ratchet_file:
                 new_ratchet_data = {
-                    op_type: {
-                        "lastlevel": block_level,
-                        "lastround": block_round,
-                    },
+                    key_hash: {
+                        op_type: {
+                            "lastlevel": block_level,
+                            "lastround": block_round,
+                        },
+                    }
                 }
 
                 is_valid_op = True
@@ -58,21 +60,25 @@ class FileRatchet:
                         lastlevel = op_ratchet["lastlevel"]
                         lastround = op_ratchet["lastround"]
                         logging.info(
-                            f"Last {op_type} level/round: {lastlevel}/{lastround}."
+                            f"{key_hash}: Last {op_type} level/round: {lastlevel}/{lastround}."
                         )
                         is_valid_op = self.validate_op(
                             op_ratchet, block_level, block_round
                         )
 
                     if is_valid_op:
-                        new_ratchet_data = ratchet_data | new_ratchet_data
+                        new_ratchet_data[key_hash] = (
+                            ratchet_data | new_ratchet_data[key_hash]
+                        )
                     else:
-                        self.ratchet_state = ratchet_data
+                        self.ratchet_state[key_hash] = ratchet_data
 
                 if is_valid_op:
-                    self.update_ratchet(ratchet_file, new_ratchet_data)
+                    self.update_ratchet(
+                        ratchet_file, new_ratchet_data[key_hash], key_hash
+                    )
 
-            logging.info(f"New {op_type} level/round: {block_level}/{block_round}.")
+            logging.info(f"{key_hash}: New {op_type} level/round: {block_level}/{block_round}.")
             logging.debug(f"Is valid operation: {is_valid_op}.")
             return is_valid_op
 
@@ -86,9 +92,9 @@ class FileRatchet:
             return True
         return False
 
-    def update_ratchet(self, ratchet_file, ratchet_data):
+    def update_ratchet(self, ratchet_file, ratchet_data, key_hash):
         """Update ratchet file and internal state with new level/round"""
         # "a+" mode will append data to `ratchet_file`, so truncate it
         ratchet_file.truncate(0)
         json.dump(ratchet_data, ratchet_file)
-        self.ratchet_state = ratchet_data
+        self.ratchet_state[key_hash] = ratchet_data

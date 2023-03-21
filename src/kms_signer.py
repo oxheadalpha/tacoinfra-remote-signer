@@ -43,7 +43,7 @@ class KmsSigner:
 
         is_valid_op = self.ratchet.check(sigreq, key_hash)
         if not is_valid_op:
-            (lastlevel, lastround) = self._get_last_level_round(op_type)
+            (lastlevel, lastround) = self._get_last_level_round(op_type, key_hash)
             abort(
                 410,
                 f"Signer for key '{key_hash}' will not sign {op_type}"
@@ -51,12 +51,12 @@ class KmsSigner:
                 + f" because ratchet has seen {lastlevel}/{lastround}.",
             )
 
-    def _get_last_level_round(self, op_type):
+    def _get_last_level_round(self, op_type, key_hash):
         """Get lastlevel/lastround from FileRatchet or ChainRatchet depending
         upon which type is being used.
         """
         if isinstance(self.ratchet, FileRatchet):
-            ratchet_op_type = self.ratchet.ratchet_state.get(op_type, {})
+            ratchet_op_type = self.ratchet.ratchet_state[key_hash].get(op_type, {})
             return (ratchet_op_type.get("lastlevel"), ratchet_op_type.get("lastround"))
         else:
             return (self.ratchet.lastlevel, self.ratchet.lastround)
