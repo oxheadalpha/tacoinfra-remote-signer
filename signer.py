@@ -59,7 +59,7 @@ if not REGION:
 
 if signer_type == "kms":
     client = boto3.client("kms", region_name=REGION)
-    SIGNER = KmsSigner(client, ratchet=FileRatchet)
+    SIGNER = KmsSigner(client, ratchet=FileRatchet())
 elif signer_type == "hsm":
     ratchet = DDBChainRatchet(REGION, environ["DDB_TABLE"])
     hsm_signer = HsmSigner(config)
@@ -83,7 +83,7 @@ def sign(key_hash):
             if request.method == "POST":
                 sigreq = SignatureReq(request.get_json(force=True))
                 response = jsonify(
-                    {"signature": SIGNER.sign(sigreq, key_data, key_hash=key_hash)}
+                    {"signature": SIGNER.sign(sigreq, key_data, key_hash)}
                 )
             else:
                 response = jsonify({"public_key": key_data["public_key"]})
