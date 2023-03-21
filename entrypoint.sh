@@ -1,11 +1,13 @@
-#!/bin/sh -x
+#!/bin/sh
+
+set -xe
 
 CMD="$1"
 shift
 
 case "$CMD" in
-	hsm)	exec hsm-remote-signer.sh	"$@"	;;
-	kms)	python3 signer.py	"kms" ;;
+	hsm)  exec hsm-remote-signer.sh	"$@"	;;
+	kms)  python3 signer.py	"kms" ;;
 esac
 
 #
