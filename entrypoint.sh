@@ -7,7 +7,11 @@ shift
 
 case "$CMD" in
 	hsm)  exec hsm-remote-signer.sh	"$@"	;;
-	kms)  python3 signer.py	"kms" ;;
+	# kms)  python3 signer.py	"kms" ;;
+	kms)  if ! python3 signer.py "kms"; then
+          echo "Failed to start kms signer."
+          exit 1
+        fi
 esac
 
 #
