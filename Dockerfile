@@ -59,7 +59,7 @@ RUN rm -rf /usr/local/bin/pip \
     && rm requirements.txt \
     && chown -R remotesigner:remotesigner . \
     && chmod 540 entrypoint.sh hsm-remote-signer.sh signer.py \
-    && chmod 440 src \
+    && chmod 540 src \
     && chmod 740 .
 
 USER 999
