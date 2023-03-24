@@ -58,7 +58,8 @@ COPY signer.py ./
 RUN rm -rf /usr/local/bin/pip \
     && rm requirements.txt \
     && chown -R remotesigner:remotesigner . \
-    && chmod 540 src entrypoint.sh hsm-remote-signer.sh signer.py \
+    && chmod 540 entrypoint.sh hsm-remote-signer.sh signer.py \
+    && chmod -R 540 src \
     && chmod 770 .
 
 USER 999
