@@ -23,7 +23,7 @@ class HsmSigner(Signer):
         self.hsm_libfile = config['hsm_lib']
         self.lock = threading.Lock()
 
-    def sign(self, handle, sigreq):
+    def sign(self, sigreq, handle):
         logging.debug(f'Signing with HSM client:')
         logging.debug(f'    Slot = {self.hsm_slot}')
         logging.debug(f'    lib = {self.hsm_libfile}')

@@ -1,6 +1,12 @@
+./src/__pycache__
 .git
+.github/**
 .gitignore
 .idea
+docker-compose.yaml
 LICENSE.md
 Makefile
+README.md
 test
+tezos-kms
+venv

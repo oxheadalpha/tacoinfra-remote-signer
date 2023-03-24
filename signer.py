@@ -1,23 +1,22 @@
-#!/usr/bin/env python3
+import logging
+import sys
+from os import environ, path
 
-from flask import Flask, request, Response, json, jsonify
+import boto3
+from flask import Flask, Response, json, jsonify, request
 from werkzeug.exceptions import HTTPException
+
+from src.ddbchainratchet import DDBChainRatchet
+from src.file_ratchet import FileRatchet
+from src.hsmsigner import HsmSigner
+from src.kms_signer import KmsSigner
 from src.sigreq import SignatureReq
 from src.validatesigner import ValidateSigner
-from src.ddbchainratchet import DDBChainRatchet
-from src.hsmsigner import HsmSigner
-from os import path, environ
-import logging
-
-def logreq(sigreq, msg):
-    if sigreq != None:
-        logging.info(f"Request: {sigreq.get_logstr()}:{msg}")
-
-logging.basicConfig(filename='./remote-signer.log',
-                    format='%(asctime)s %(threadName)s %(message)s',
-                    level=logging.INFO)
 
 app = Flask(__name__)
+logging.basicConfig(level=logging.DEBUG)
+log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 #
 # The config file (keys.json) has a structure:
@@ -39,49 +38,67 @@ app = Flask(__name__)
 #         'voting': ['pass'],	# a list of permitted votes
 #     }
 # }
+config = {}
 
-if path.isfile('keys.json'):
-    with open('keys.json', 'r') as myfile:
-        json_blob = myfile.read().replace('\n', '')
-        config = json.loads(json_blob)
+keys_path = "./signer-config/keys.json"
+if path.isfile(keys_path):
+    with open(keys_path, "r") as myfile:
+        json_blob = myfile.read().replace("\n", "")
+        config["keys"] = json.loads(json_blob)
         logging.info(f"Loaded config contains: {json.dumps(config, indent=2)}")
 
-#
-# We keep the ChainRatchet, HSM, and ValidateSigner outside sign()
-# so that they persist.
+try:
+    signer_type = sys.argv[1]
+except:
+    signer_type = None
 
-cr  = DDBChainRatchet(environ['REGION'], environ['DDB_TABLE'])
-hsm = HsmSigner(config)
-rs  = ValidateSigner(config, ratchet=cr, subsigner=hsm)
+SIGNER = None
+REGION = environ.get("REGION") or environ.get("AWS_REGION")
+if not REGION:
+    raise Exception("No REGION or AWS_REGION env var set.")
 
-@app.route('/keys/<key_hash>', methods=['GET', 'POST'])
+if signer_type == "kms":
+    client = boto3.client("kms", region_name=REGION)
+    SIGNER = KmsSigner(client, ratchet=FileRatchet())
+elif signer_type == "hsm":
+    ratchet = DDBChainRatchet(REGION, environ["DDB_TABLE"])
+    hsm_signer = HsmSigner(config)
+    SIGNER = ValidateSigner(config, ratchet=ratchet, subsigner=hsm_signer)
+else:
+    raise Exception("Either 'hsm' or 'kms' must be provided as the signer type.")
+
+
+def logreq(sigreq, msg):
+    if sigreq != None:
+        logging.info(f"Request: {sigreq.get_logstr()}:{msg}")
+
+
+@app.route("/keys/<key_hash>", methods=["GET", "POST"])
 def sign(key_hash):
     response = None
     sigreq = None
     try:
-        if key_hash in config['keys']:
-            key = config['keys'][key_hash]
-            if request.method == 'POST':
+        if key_hash in config["keys"]:
+            key_data = config["keys"][key_hash]
+            if request.method == "POST":
                 sigreq = SignatureReq(request.get_json(force=True))
-                response = jsonify({
-                    'signature': rs.sign(key['private_handle'], sigreq)
-                })
+                response = jsonify(
+                    {"signature": SIGNER.sign(sigreq, key_data, key_hash)}
+                )
             else:
-                response = jsonify({ 'public_key': key['public_key'] })
+                response = jsonify({"public_key": key_data["public_key"]})
         else:
             logging.warning(f"Couldn't find key {key_hash}")
-            response = Response('Key not found', status=404)
+            response = Response("Key not found", status=404)
     except HTTPException as e:
         logging.error(e)
         logreq(sigreq, "Failed")
         raise
     except Exception as e:
-        data = {'error': str(e)}
-        logging.error(f'Exception thrown during request: {str(e)}')
+        data = {"error": str(e)}
+        logging.error(f"Exception thrown during request:", exc_info=True)
         response = app.response_class(
-            response=json.dumps(data),
-            status=500,
-            mimetype='application/json'
+            response=json.dumps(data), status=500, mimetype="application/json"
         )
         logreq(sigreq, "Failed")
         return response
@@ -91,14 +108,12 @@ def sign(key_hash):
     return response
 
 
-@app.route('/authorized_keys', methods=['GET'])
+@app.route("/authorized_keys", methods=["GET"])
 def authorized_keys():
     return app.response_class(
-        response=json.dumps({}),
-        status=200,
-        mimetype='application/json'
+        response=json.dumps({}), status=200, mimetype="application/json"
     )
 
 
-if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5000, debug=True)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
