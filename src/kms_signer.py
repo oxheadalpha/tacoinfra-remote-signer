@@ -1,11 +1,10 @@
 import logging
-
+import threading
 
 from pytezos.crypto.encoding import base58_encode
 from werkzeug.exceptions import abort
 
-
-from src.asn1 import Decoder, HIGH_S_VALUE
+from src.asn1 import HIGH_S_VALUE, Decoder
 from src.file_ratchet import FileRatchet
 
 valid_req_types = ["Baking", "Endorsement", "Preendorsement", "Ballot"]
@@ -19,6 +18,7 @@ class KmsSigner:
     ):
         self.kms_client = kms_client
         self.ratchet = ratchet
+        self.locks = {}
 
     def sign(self, sigreq, key, key_hash):
         """Entrypoint function for the KmsSigner to sign an operation"""
@@ -26,14 +26,26 @@ class KmsSigner:
         if op_type not in valid_req_types:
             raise Exception(f"Unsupported signature request type: {op_type}")
 
-        if self.ratchet and op_type != "Ballot":
-            self._validate_op(sigreq, key_hash)
+        with self._get_lock(key_hash):
+            ratchet_data = {}
+            should_validate = self.ratchet and op_type != "Ballot"
 
-        kms_der_sig = self._kms_sign(sigreq, key)
-        decoded_sig = self._decode_sig(kms_der_sig)
-        b58_sig = base58_encode(decoded_sig, b"spsig")
-        logging.debug(f"Base58-encoded signature: {b58_sig}")
-        return b58_sig.decode("utf-8")
+            if should_validate:
+                ratchet_data = self._validate_op(sigreq, key_hash)
+
+            kms_der_sig = self._kms_sign(sigreq, key)
+            decoded_sig = self._decode_sig(kms_der_sig)
+            b58_sig = base58_encode(decoded_sig, b"spsig")
+            logging.debug(f"Base58-encoded signature: {b58_sig}")
+
+            if should_validate:
+                self.ratchet.update(ratchet_data, sigreq,  key_hash)
+
+            return b58_sig.decode("utf-8")
+
+    def _get_lock(self, key_hash):
+        """Get or create the lock for the corresponding key_hash"""
+        return self.locks.setdefault(key_hash, threading.Lock())
 
     def _validate_op(self, sigreq, key_hash):
         """Use a ratchet to validate an operation"""
@@ -41,23 +53,23 @@ class KmsSigner:
         block_round = sigreq.get_round()
         op_type = sigreq.get_type()
 
-        is_valid_op = self.ratchet.check(sigreq, key_hash)
+        (is_valid_op, ratchet_data) = self.ratchet.check(sigreq, key_hash)
         if not is_valid_op:
-            (lastlevel, lastround) = self._get_last_level_round(op_type, key_hash)
+            (lastlevel, lastround) = self._get_last_level_round(ratchet_data[op_type])
             abort(
                 410,
                 f"Signer for key '{key_hash}' will not sign {op_type}"
                 + f" op level/round {block_level}/{block_round}"
                 + f" because ratchet has seen {lastlevel}/{lastround}.",
             )
+        return ratchet_data
 
-    def _get_last_level_round(self, op_type, key_hash):
+    def _get_last_level_round(self, ratchet_data):
         """Get lastlevel/lastround from FileRatchet or ChainRatchet depending
         upon which type is being used.
         """
         if isinstance(self.ratchet, FileRatchet):
-            ratchet_op_type = self.ratchet.ratchet_state[key_hash].get(op_type, {})
-            return (ratchet_op_type.get("lastlevel"), ratchet_op_type.get("lastround"))
+            return (ratchet_data.get("lastlevel"), ratchet_data.get("lastround"))
         else:
             return (self.ratchet.lastlevel, self.ratchet.lastround)
 
