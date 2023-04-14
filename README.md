@@ -18,7 +18,7 @@ Note that we have only tested it on [AWS CloudHSM](https://aws.amazon.com/cloudh
 
 Please note that this software does not provide any authentication or authorization. You will need to take care of that yourself. It simply returns the signature for valid payloads, after performing some checks:
 * Is the message a valid payload?
-* Does the message begin with a 0x11, 0x12 or 0x13? Indicating it is a baking or endorsement, rather than a 0x03 transfer.
+* Does the message begin with a 0x11, 0x12 or 0x13? Indicating it is a baking, preendorsement, or endorsement, rather than a 0x03 transfer.
 * Is the message within a certain threshold of the head of the chain? Ensures you are signing valid blocks.
 * For baking signatures, is the block height of the payload greater than the current block height? This prevents double baking.
 
