@@ -49,6 +49,7 @@ class FileRatchet:
 
         with open(ratchet_file_path, "w") as ratchet_file:
             json.dump(ratchet_state, ratchet_file)
+            return ratchet_state
 
     def check(self, sigreq, key_hash):
         ratchet_file_path = self.get_ratchet_file_path(key_hash)
